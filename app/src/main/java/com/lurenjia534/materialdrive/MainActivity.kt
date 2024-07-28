@@ -34,6 +34,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,10 +46,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lurenjia534.materialdrive.ui.theme.MaterialDriveTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.lurenjia534.materialdrive.requset.TokenRequestViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,13 +60,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MaterialDriveTheme {
+                val navController = rememberNavController()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    TokenRequestScreen(
-                        innerPadding = innerPadding,
-                        onTokenReceived = { token ->
-                            // Do something with the token
-                        }
-                    )
+                   AppNavHost(navController = navController,innerPadding = innerPadding)
                 }
             }
         }
@@ -97,6 +97,13 @@ fun TokenRequestScreen(
     onTokenReceived: (String) -> Unit
 ) {
 
+    val tokenResponse by viewModel.tokenResponse.observeAsState()
+
+    var clientId by remember { mutableStateOf("") }
+    var clientSecret by remember { mutableStateOf("") }
+    var tenantId by remember { mutableStateOf("") }
+    var userId by remember { mutableStateOf("") }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -117,7 +124,7 @@ fun TokenRequestScreen(
                             fontSize = MaterialTheme.typography.titleLarge.fontSize,
                             fontWeight = FontWeight.Bold,
 
-                        )
+                            )
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -128,17 +135,6 @@ fun TokenRequestScreen(
             )
         }
     ) { innerPadding ->
-        var clientId by remember { mutableStateOf(viewModel.clientId.value) }
-        var clientSecret by remember { mutableStateOf(viewModel.clientSecret.value) }
-        var tenantId by remember { mutableStateOf(viewModel.tenantId.value) }
-        var userId by remember { mutableStateOf(viewModel.userId.value) }
-
-        LaunchedEffect(viewModel.clientId.value) {
-            clientId = viewModel.clientId.value
-            clientSecret = viewModel.clientSecret.value
-            tenantId = viewModel.tenantId.value
-            userId = viewModel.userId.value
-        }
 
         LazyColumn(
             modifier = Modifier
@@ -163,16 +159,14 @@ fun TokenRequestScreen(
                             value = clientId,
                             onValueChange = {
                                 clientId = it
-                                viewModel.updateClientId(it)
                             },
-                            label =  "Client ID" ,
-                            )
+                            label = "Client ID",
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         LoginOutlinedTextField(
                             value = clientSecret,
                             onValueChange = {
                                 clientSecret = it
-                                viewModel.updateClientSecret(it)
                             },
                             label = "Client Secret",
                         )
@@ -181,23 +175,21 @@ fun TokenRequestScreen(
                             value = tenantId,
                             onValueChange = {
                                 tenantId = it
-                                viewModel.updateTenantId(it)
                             },
-                            label ="Tenant ID",
+                            label = "Tenant ID",
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         LoginOutlinedTextField(
                             value = userId,
                             onValueChange = {
                                 userId = it
-                                viewModel.updateUserId(it)
                             },
                             label = "User ID",
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = {
-                                viewModel.fetchToken(onTokenReceived)
+                                viewModel.requestToken(clientId, clientSecret, tenantId)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
@@ -207,9 +199,37 @@ fun TokenRequestScreen(
                             Text("Login", color = MaterialTheme.colorScheme.onPrimary)
                         }
                         Spacer(modifier = Modifier.height(16.dp))
+                        tokenResponse?.let {
+                            if (it.access_token.isNotEmpty()) {
+                                onTokenReceived(it.access_token)
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+    @Composable
+    fun AppNavHost(navController: NavHostController, innerPadding: PaddingValues) {
+        NavHost(navController = navController, startDestination = "login") {
+            composable("login") {
+                TokenRequestScreen(
+                    innerPadding = innerPadding,
+                    onTokenReceived = { token ->
+                        navController.navigate("userProfile")
+                    }
+                )
+            }
+            composable("userProfile") {
+                UserProfileScreen()
+            }
+        }
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserProfileScreen(){
+    Text(text = "114514")
+}
+

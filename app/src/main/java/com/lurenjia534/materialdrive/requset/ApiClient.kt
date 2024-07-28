@@ -1,11 +1,11 @@
-package com.lurenjia534.materialdrive
+package com.lurenjia534.materialdrive.requset
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.create
 
-object ApiClient{
-    private const val BASE_URL = " https://login.microsoftonline.com/"
+// ApiClient.kt
+object ApiClient {
+    private const val BASE_URL = "https://login.microsoftonline.com/"
 
     fun create(): ApiService {
         val retrofit = Retrofit.Builder()

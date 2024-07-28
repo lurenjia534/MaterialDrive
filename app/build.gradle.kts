@@ -60,6 +60,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("io.coil-kt:coil:2.7.0")
+    implementation(libs.androidx.runtime.livedata)
     val room_version = "2.6.1"
 
     implementation("androidx.room:room-runtime:$room_version")
