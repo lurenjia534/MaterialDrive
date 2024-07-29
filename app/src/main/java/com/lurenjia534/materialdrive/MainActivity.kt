@@ -21,10 +21,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CardElevation
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,7 +55,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.lurenjia534.materialdrive.Profile.DriveInfoRepository
+import com.lurenjia534.materialdrive.Profile.UserProfileViewModel
+import com.lurenjia534.materialdrive.Profile.UserProfileViewModelFactory
+import com.lurenjia534.materialdrive.requset.ApiClient
 import com.lurenjia534.materialdrive.requset.TokenRequestViewModel
+import com.lurenjia534.materialdrive.ux.ScreenItem
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,11 +100,10 @@ fun LoginOutlinedTextField(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TokenRequestScreen(
+    navController: NavController,
     innerPadding: PaddingValues,
-    viewModel: TokenRequestViewModel = viewModel(),
-    onTokenReceived: (String) -> Unit
+    viewModel: TokenRequestViewModel = viewModel()
 ) {
-
     val tokenResponse by viewModel.tokenResponse.observeAsState()
 
     var clientId by remember { mutableStateOf("") }
@@ -123,8 +130,7 @@ fun TokenRequestScreen(
                             color = MaterialTheme.colorScheme.primary,
                             fontSize = MaterialTheme.typography.titleLarge.fontSize,
                             fontWeight = FontWeight.Bold,
-
-                            )
+                        )
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -134,12 +140,11 @@ fun TokenRequestScreen(
                 )
             )
         }
-    ) { innerPadding ->
-
+    ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(paddingValues)
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -157,34 +162,26 @@ fun TokenRequestScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         LoginOutlinedTextField(
                             value = clientId,
-                            onValueChange = {
-                                clientId = it
-                            },
-                            label = "Client ID",
+                            onValueChange = { clientId = it },
+                            label = "Client ID"
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         LoginOutlinedTextField(
                             value = clientSecret,
-                            onValueChange = {
-                                clientSecret = it
-                            },
-                            label = "Client Secret",
+                            onValueChange = { clientSecret = it },
+                            label = "Client Secret"
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         LoginOutlinedTextField(
                             value = tenantId,
-                            onValueChange = {
-                                tenantId = it
-                            },
-                            label = "Tenant ID",
+                            onValueChange = { tenantId = it },
+                            label = "Tenant ID"
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         LoginOutlinedTextField(
                             value = userId,
-                            onValueChange = {
-                                userId = it
-                            },
-                            label = "User ID",
+                            onValueChange = { userId = it },
+                            label = "User ID"
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
@@ -201,7 +198,7 @@ fun TokenRequestScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         tokenResponse?.let {
                             if (it.access_token.isNotEmpty()) {
-                                onTokenReceived(it.access_token)
+                                navController.navigate("userProfile/${it.access_token}/$userId")
                             }
                         }
                     }
@@ -210,26 +207,103 @@ fun TokenRequestScreen(
         }
     }
 }
-    @Composable
-    fun AppNavHost(navController: NavHostController, innerPadding: PaddingValues) {
-        NavHost(navController = navController, startDestination = "login") {
-            composable("login") {
+
+@Composable
+fun AppNavHost(navController: NavHostController, innerPadding: PaddingValues) {
+    val items = listOf(
+        ScreenItem.Home,
+        ScreenItem.UserProfile
+    )
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+                items.forEach { screen ->
+                    NavigationBarItem(
+                        icon = { Icon(screen.icon, contentDescription = screen.title) },
+                        label = { Text(screen.title) },
+                        selected = currentRoute == screen.route,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(navController = navController, startDestination = "TokenRequest", modifier = Modifier.padding(innerPadding)) {
+            composable("TokenRequest") {
                 TokenRequestScreen(
-                    innerPadding = innerPadding,
-                    onTokenReceived = { token ->
-                        navController.navigate("userProfile")
-                    }
+                    navController = navController,
+                    innerPadding = innerPadding
                 )
             }
-            composable("userProfile") {
-                UserProfileScreen()
+            composable(ScreenItem.Home.route) {
+                HomeScreen()
+            }
+            composable("userProfile/{token}/{userId}") { backStackEntry ->
+                val token = backStackEntry.arguments?.getString("token") ?: ""
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                UserProfileScreen(navController = navController, token = token, userId = userId)
             }
         }
     }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserProfileScreen(){
+fun HomeScreen(){
     Text(text = "114514")
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UserProfileScreen(navController: NavController, token: String, userId: String) {
+    val apiService = ApiClient.createGraphService()
+    val repository = DriveInfoRepository(apiService)
+    val viewModel: UserProfileViewModel = viewModel(factory = UserProfileViewModelFactory(repository))
+    val driveInfo by viewModel.driveInfo.observeAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchDriveInfo(token, userId)
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("User Profile") }
+            )
+        }
+    ) { paddingValues ->
+        if (driveInfo != null) {
+            val info = driveInfo!!
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Name: ${info.owner.user.displayName}", style = MaterialTheme.typography.bodyMedium)
+                Text("Email: ${info.owner.user.email}", style = MaterialTheme.typography.bodyMedium)
+                Text("Drive Type: ${info.driveType}", style = MaterialTheme.typography.bodyMedium)
+                Text("Total Space: ${info.quota.total}", style = MaterialTheme.typography.bodyMedium)
+                Text("Used Space: ${info.quota.used}", style = MaterialTheme.typography.bodyMedium)
+                Text("Remaining Space: ${info.quota.remaining}", style = MaterialTheme.typography.bodyMedium)
+                // Add more fields as needed
+            }
+        } else {
+            CircularProgressIndicator()
+        }
+    }
 }
 
