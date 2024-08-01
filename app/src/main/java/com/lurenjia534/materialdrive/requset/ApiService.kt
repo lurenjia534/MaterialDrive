@@ -1,5 +1,6 @@
 package com.lurenjia534.materialdrive.requset
 
+import com.lurenjia534.materialdrive.Drivelist.DriveItemsResponse
 import com.lurenjia534.materialdrive.Profile.DriveInfo
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
@@ -25,4 +26,10 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("userId") userId: String
     ): DriveInfo
+
+    @GET("v1.0/users/{userId}/drive/root/children")
+    suspend fun getDriveItems(
+        @Header("Authorization") token: String,
+        @Path("userId") userId: String
+    ): DriveItemsResponse
 }
