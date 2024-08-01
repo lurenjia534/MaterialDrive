@@ -7,6 +7,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class ScreenItem(val route: String, val title: String, val icon: ImageVector) {
     object TokenRequest : ScreenItem("TokenRequest", "Login", Icons.Default.Person)
-    object Home : ScreenItem("home", "Home", Icons.Default.Home)
+    object Home : ScreenItem("home/{token}/{userId}", "Home", Icons.Default.Home)
     object UserProfile : ScreenItem("userProfile/{token}/{userId}", "Profile", Icons.Default.Person)
 }
